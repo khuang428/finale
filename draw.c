@@ -9,6 +9,18 @@
 #include "gmath.h"
 
 void scanline_convert( struct matrix *points, int i, screen s, zbuffer zb ) {
+  double x0 = points->m[0][i];
+  double y0 = points->m[1][i];
+  double z0 = points->m[2][i];
+  double x1 = points->m[0][i+1];
+  double y1 = points->m[1][i+1];
+  double z1 = points->m[2][i+1];
+  double x2 = points->m[0][i+2];
+  double y2 = points->m[1][i+2];
+  double z2 = points->m[2][i+2];
+  double By,My,Ty;
+  double Bx,Mx,Tx;
+  double Bz,Mz,Tz;
 }
 
 

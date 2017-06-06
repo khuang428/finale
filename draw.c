@@ -18,12 +18,69 @@ void scanline_convert( struct matrix *points, int i, screen s, zbuffer zb ) {
   double x2 = points->m[0][i+2];
   double y2 = points->m[1][i+2];
   double z2 = points->m[2][i+2];
-  double By,My,Ty;
-  double Bx,Mx,Tx;
-  double Bz,Mz,Tz;
+  double *B;
+  double *M;
+  double *T;
+  if(y0 > y1 && y0 > y2){
+    T[0] = x0;
+    T[1] = y0;
+    T[2] = z0;
+    if(y1 > y2){
+      M[0] = x1;
+      M[1] = y1;
+      M[2] = z1;
+      B[0] = x2;
+      B[1] = y2;
+      B[2] = z2;
+    }else{
+      M[0] = x2;
+      M[1] = y2;
+      M[2] = z2;
+      B[0] = x1;
+      B[1] = y1;
+      B[2] = z1;
+    }
+  }else if(y1 > y0 && y1 > y2){
+    T[0] = x1;
+    T[1] = y1;
+    T[2] = z1;
+    if(y0 > y2){
+      M[0] = x0;
+      M[1] = y0;
+      M[2] = z0;
+      B[0] = x2;
+      B[1] = y2;
+      B[2] = z2;
+    }else{
+      M[0] = x2;
+      M[1] = y2;
+      M[2] = z2;
+      B[0] = x0;
+      B[1] = y0;
+      B[2] = z0;
+    }
+  }else{
+    T[0] = x2;
+    T[1] = y2;
+    T[2] = z2;
+    if(y1 > y0){
+      M[0] = x1;
+      M[1] = y1;
+      M[2] = z1;
+      B[0] = x0;
+      B[1] = y0;
+      B[2] = z0;
+    }else{
+      M[0] = x0;
+      M[1] = y0;
+      M[2] = z0;
+      B[0] = x1;
+      B[1] = y1;
+      B[2] = z1;
+    }
+  }
+  
 }
-
-
 
 /*======== void add_polygon() ==========
 Inputs:   struct matrix *surfaces

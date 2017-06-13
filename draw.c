@@ -8,78 +8,176 @@
 #include "math.h"
 #include "gmath.h"
 
-void scanline_convert( struct matrix *points, int i, screen s, zbuffer zb ) {
-  double x0 = points->m[0][i];
-  double y0 = points->m[1][i];
-  double z0 = points->m[2][i];
-  double x1 = points->m[0][i+1];
-  double y1 = points->m[1][i+1];
-  double z1 = points->m[2][i+1];
-  double x2 = points->m[0][i+2];
-  double y2 = points->m[1][i+2];
-  double z2 = points->m[2][i+2];
-  double *B;
-  double *M;
-  double *T;
-  if(y0 > y1 && y0 > y2){
-    T[0] = x0;
-    T[1] = y0;
-    T[2] = z0;
-    if(y1 > y2){
-      M[0] = x1;
-      M[1] = y1;
-      M[2] = z1;
-      B[0] = x2;
-      B[1] = y2;
-      B[2] = z2;
-    }else{
-      M[0] = x2;
-      M[1] = y2;
-      M[2] = z2;
-      B[0] = x1;
-      B[1] = y1;
-      B[2] = z1;
-    }
-  }else if(y1 > y0 && y1 > y2){
-    T[0] = x1;
-    T[1] = y1;
-    T[2] = z1;
-    if(y0 > y2){
-      M[0] = x0;
-      M[1] = y0;
-      M[2] = z0;
-      B[0] = x2;
-      B[1] = y2;
-      B[2] = z2;
-    }else{
-      M[0] = x2;
-      M[1] = y2;
-      M[2] = z2;
-      B[0] = x0;
-      B[1] = y0;
-      B[2] = z0;
-    }
-  }else{
-    T[0] = x2;
-    T[1] = y2;
-    T[2] = z2;
-    if(y1 > y0){
-      M[0] = x1;
-      M[1] = y1;
-      M[2] = z1;
-      B[0] = x0;
-      B[1] = y0;
-      B[2] = z0;
-    }else{
-      M[0] = x0;
-      M[1] = y0;
-      M[2] = z0;
-      B[0] = x1;
-      B[1] = y1;
-      B[2] = z1;
+double nums[3][3];
+color co;
+double light[6];
+int shade;
+
+void normalV(double * v){
+  double m = sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
+  if(m > 1){
+    v[0] /= m;
+    v[1] /= m;
+    v[2] /= m;
+  }
+}
+
+double dotP(double *v0, double *v1){
+  normalV(v0);
+  normalV(v1);
+  return (v0[0] * v1[0]) + (v0[1] * v1[1]) + (v0[2] * v1[2]);
+}
+
+double * multV(double *v, double m){
+  v[0] *= m;
+  v[1] *= m;
+  v[2] *= m;
+  return v;
+}
+
+double *subV(double *v0, double *v1){
+  v0[0] -= v1[0];
+  v0[1] -= v1[1];
+  v0[2] -= v1[2];
+  return v0;
+}
+
+void ambient(color *c){
+  c->red = nums[0][0]*co.red;
+  c->green = nums[1][0]*co.green;
+  c->blue = nums[2][0]*co.blue;
+}
+
+void diffuse(color *c, double *normal){
+  double N = dotP(normal, light);
+  c->red += nums[0][1] * light[3] * N;
+  c->green += nums[1][1] * light[4] * N;
+  c->blue += nums[2][1] * light[5] * N;
+}
+
+void specular(color *c, double *normal,int e){
+  double v[3] = {0,0,1};
+  double scalar = dotP(normal, light);
+  double *M = multV(multV(normal, 2), scalar);
+  double *S = subV(M, light);
+  scalar = dotP(S,v);
+  c->red += nums[0][2] * light[3] * pow(scalar, e);
+  c->green += nums[1][2] * light[4] * pow(scalar, e);
+  c-> blue += nums[2][2] * light[5] * pow(scalar,e);
+}
+
+void shading(struct matrix *points, int i, color *c){
+  double *normal;
+  normal = calculate_normal(points, i);
+  normalV(light);
+  normalV(normal);
+  if(!shade){
+    ambient(c);
+    diffuse(c, normal);
+    specular(c, normal, 2);
+  }
+  if(c->red > 255){
+    c->red = 255;
+  }else if(c->red < 0){
+    c->red = 0;
+  }
+  if(c->green > 255){
+    c->green = 255;
+  }else if(c->green < 0){
+	c->green = 0;
+  }
+  if(c->blue > 255){
+    c->blue = 255;
+  }else if(c->blue < 0){
+    c->blue = 0;
+  }
+}
+
+struct p{
+  double x;
+  double y;
+  double z;
+};
+
+void TMB(struct p* points){
+  int i,j;
+  for(i = 1;i < 3;i++){
+    for(j = 0;j < 3 - i;j++){
+      if(points[j].y >= points[j + 1].y){
+	struct p temp = points[j];
+	points[j] = points[j + 1];
+	points[j + 1] = temp;
+      }
     }
   }
-  
+}
+void scanline_convert( struct matrix *points, int i, screen s, zbuffer zb , color c) {
+  double Tx, Ty, Tz, Mx, My, Mz, Bx, By, Bz, dx0, dx1, dz0, dz1, x0, x1, y, z0, z1;
+  struct p point[3];
+  shading(points, i, &c);
+  point[0].x = points->m[0][i];
+  point[0].y = points->m[1][i];
+  point[0].z=points->m[2][i];
+  point[1].x=points->m[0][i+1];
+  point[1].y=points->m[1][i+1];
+  point[1].z=points->m[2][i+1];
+  point[2].x=points->m[0][i+2];
+  point[2].y=points->m[1][i+2];
+  point[2].z=points->m[2][i+2];
+  TMB(point);
+  Tx = point[2].x;
+  Ty = point[2].y;
+  Tz = point[2].z;
+  Mx = point[1].x;
+  My = point[1].y;
+  Mz = point[1].z;
+  Bx = point[0].x;
+  By = point[0].y;
+  Bz = point[0].z;
+  if(By == Ty){
+    dx0 = 0;
+    dz0 = 0;
+  }else{
+    dx0 = (Tx - Bx) / (Ty - By);
+    dz0 = (Tz - Bz) / (Ty - By);
+  }
+  if(By == My){
+    dx1 = 0;
+    dz1 = 0;
+  }else{
+    dx1 = (Mx - Bx) / (My - By);
+    dz1 = (Mz - Bz) / (My - By);
+  }
+  x0 = Bx;
+  x1 = Bx;
+  y = By;
+  z0 = Bz;
+  z1 = Bz;
+  while(y <= My){
+    draw_line(x0, y, z0, x1, y, z1, s, zb, c);
+    x0 += dx0;
+    x1 += dx1;
+    z0 += dz0;
+    z1 += dz1;
+    y++;
+  }
+  x1 = Mx;
+  z1 = Mz;
+  if(My == Ty){
+    dx1 = 0;
+    dz1 = 0;
+  }else{
+    dx1 = (Tx - Mx) / (Ty - My);
+    dx1 = (Tz - Mz) / (Ty - My);
+  }
+  while(y <= Ty){
+    draw_line(x0, y, z0, x1, y, z1, s, zb, c);
+    x0 += dx0;
+    x1 += dx1;
+    z0 += dz0;
+    z1 += dz1;
+    y++;
+  }
 }
 
 /*======== void add_polygon() ==========
@@ -648,7 +746,11 @@ void draw_line(int x0, int y0, double z0,
       loop_end = y;
     }
   }
-
+  if(loop_start == loop_end){
+    dz = 0;
+  }else{
+    dz = (z1 - z0)  / (loop_end - loop_start);
+  }
 
   while ( loop_start < loop_end ) {
     
@@ -667,6 +769,7 @@ void draw_line(int x0, int y0, double z0,
       y+= dy_east;
       d+= d_east;
     }
+    z+= dz;
     loop_start++;
   } //end drawing loop
   plot( s, zb, c, x1, y1, z );

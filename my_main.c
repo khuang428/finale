@@ -4,7 +4,7 @@
   to get a working mdl project (for now).
 
   my_main.c will serve as the interpreter for mdl.
-  When an mdl script goes through a lexer and parser, 
+  When an mdl script goes through a lexer and parser,
   the resulting operations will be in the array op[].
 
   Your job is to go through each entry in op and perform
@@ -13,25 +13,25 @@
   push: push a new origin matrix onto the origin stack
   pop: remove the top matrix on the origin stack
 
-  move/scale/rotate: create a transformation matrix 
-                     based on the provided values, then 
+  move/scale/rotate: create a transformation matrix
+                     based on the provided values, then
 		     multiply the current top of the
 		     origins stack by it.
 
   box/sphere/torus: create a solid object based on the
-                    provided values. Store that in a 
+                    provided values. Store that in a
 		    temporary matrix, multiply it by the
 		    current top of the origins stack, then
 		    call draw_polygons.
 
-  line: create a line based on the provided values. Store 
+  line: create a line based on the provided values. Store
         that in a temporary matrix, multiply it by the
 	current top of the origins stack, then call draw_lines.
 
   save: call save_extension with the provided filename
 
   display: view the image live
-  
+
   jdyrlandweaver
   =========================*/
 
@@ -51,13 +51,13 @@
 
 
 /*======== void first_pass() ==========
-  Inputs:   
-  Returns: 
+  Inputs:
+  Returns:
 
   Checks the op array for any animation commands
   (frames, basename, vary)
-  
-  Should set num_frames and basename if the frames 
+
+  Should set num_frames and basename if the frames
   or basename commands are present
 
   If vary is found, but frames is not, the entire
@@ -79,7 +79,7 @@ void first_pass() {
 
   num_frames = 1;
   for (i=0;i<lastop;i++) {
-    
+
     if (op[i].opcode == FRAMES) {
       num_frames = op[i].op.frames.num_frames;
       frame_check = 1;
@@ -104,7 +104,7 @@ void first_pass() {
 }
 
 /*======== struct vary_node ** second_pass() ==========
-  Inputs:   
+  Inputs:
   Returns: An array of vary_node linked lists
 
   In order to set the knobs for animation, we need to keep
@@ -117,10 +117,10 @@ void first_pass() {
   node contains a knob name, a value, and a pointer to the
   next node.
 
-  Go through the opcode array, and when you find vary, go 
+  Go through the opcode array, and when you find vary, go
   from knobs[0] to knobs[frames-1] and add (or modify) the
   vary_node corresponding to the given knob with the
-  appropirate value. 
+  appropirate value.
 
   jdyrlandweaver
   ====================*/
@@ -128,7 +128,7 @@ struct vary_node ** second_pass() {
 
   int i, k;
   int start_frame, end_frame;
-  double start_value, end_value, delta;  
+  double start_value, end_value, delta;
   struct vary_node *curr = NULL;
   struct vary_node **knobs;
   knobs = (struct vary_node **)calloc(num_frames, sizeof(struct vary_node *));
@@ -139,7 +139,7 @@ struct vary_node ** second_pass() {
       start_frame = op[i].op.vary.start_frame;
       end_frame = op[i].op.vary.end_frame;
       start_value = op[i].op.vary.start_val;
-      end_value = op[i].op.vary.end_val;      
+      end_value = op[i].op.vary.end_val;
       delta = (end_value - start_value) /
 	(end_frame - start_frame);
 
@@ -174,21 +174,21 @@ struct vary_node ** second_pass() {
 
 	if ( k == start_frame )
 	  curr->value = start_value;
-	
+
 	else if ( k > start_frame && k <= end_frame )
 	  curr->value = start_value + (k - start_frame) * delta;
-	
+
 	//printf("knob: %s\t%lf\n", curr->name, curr->value);
       }//end frame loop
     }//end if vary
-  }//end for 
-  
+  }//end for
+
   return knobs;
 }
 
 /*======== void print_knobs() ==========
-Inputs:   
-Returns: 
+Inputs:
+Returns:
 
 Goes through symtab and display all the knobs and their
 currnt values
@@ -196,7 +196,7 @@ currnt values
 jdyrlandweaver
 ====================*/
 void print_knobs() {
-  
+
   int i;
 
   printf( "ID\tNAME\t\tTYPE\t\tVALUE\n" );
@@ -212,13 +212,13 @@ void print_knobs() {
 }
 
 /*======== void my_main() ==========
-  Inputs: 
-  Returns: 
+  Inputs:
+  Returns:
 
   This is the main engine of the interpreter, it should
   handle most of the commadns in mdl.
 
-  If frames is not present in the source (and therefore 
+  If frames is not present in the source (and therefore
   num_frames is 1, then process_knobs should be called.
 
   If frames is present, the enitre op array must be
@@ -228,11 +228,11 @@ void print_knobs() {
   files will be listed in order, then clear the screen and
   reset any other data structures that need it.
 
-  Important note: you cannot just name your files in 
+  Important note: you cannot just name your files in
   regular sequence, like pic0, pic1, pic2, pic3... if that
   is done, then pic1, pic10, pic11... will come before pic2
   and so on. In order to keep things clear, add leading 0s
-  to the numeric portion of the name. If you use sprintf, 
+  to the numeric portion of the name. If you use sprintf,
   you can use "%0xd" for this purpose. It will add at most
   x 0s in front of a number, if needed, so if used correctly,
   and x = 4, you would get numbers like 0001, 0002, 0011,
@@ -248,7 +248,7 @@ void my_main() {
   knobs = second_pass();
   char frame_name[128];
   int f;
-  
+
   int i, j;
   struct matrix *tmp;
   struct stack *systems;
@@ -258,11 +258,11 @@ void my_main() {
   double step = 0.1;
   double theta;
   double knob_value, xval, yval, zval;
-  
+
   g.red = 0;
   g.green = 0;
   g.blue = 0;
-
+  SYMTAB *sym;
 
   for (f=0; f < num_frames; f++) {
 
@@ -270,35 +270,67 @@ void my_main() {
     tmp = new_matrix(4, 1000);
     clear_screen( t );
     clear_zbuffer(zb);
-    
+
     //if there are multiple frames, set the knobs
-    if ( num_frames > 1 ) {      
+    if ( num_frames > 1 ) {
       vn = knobs[f];
-      
-      while ( vn ) {	
-	//printf("\tknob: %s value:%lf\n", vn->name, vn->value);	
+
+      while ( vn ) {
+	//printf("\tknob: %s value:%lf\n", vn->name, vn->value);
 	set_value( lookup_symbol( vn->name ), vn->value );
 	vn = vn-> next;
       } //end while knobs
     }//end if multiple frames
-    
-    
+
+
     for (i=0;i<lastop;i++) {
 
       //printf("%d: ",i);
       switch (op[i].opcode)
 	{
+
+  case AMBIENT:
+    amb.red = op[i].op.ambient.c[0];
+    amb.green = op[i].op.ambient.c[1];
+    amb.blue = op[i].op.ambient.c[2];
+    break;
+
+  case CONSTANTS:
+    sym = lookup_symbol(op[i].op.set.p->name);
+    constants[0][0] = sym->s.c->r[0];
+    constants[1][0] = sym->s.c->g[0];
+    constants[2][0] = sym->s.c->b[0];
+    constants[0][1] = sym->s.c->r[1];
+    constants[1][1] = sym->s.c->g[1];
+    constants[2][1] = sym->s.c->b[1];
+    constants[0][2] = sym->s.c->r[2];
+    constants[1][2] = sym->s.c->g[2];
+    constants[2][2] = sym->s.c->b[2];
+    break;
+  case LIGHT:
+    sym = lookup_symbol(op[i].op.set.p->name);
+    lightArr[0]=sym->s.l->l[0];
+    lightArr[1]=sym->s.l->l[1];
+    lightArr[2]=sym->s.l->l[2];
+    lightArr[3]=op[i].op.light.c[0];
+    lightArr[4]=op[i].op.light.c[1];
+    lightArr[5]=op[i].op.light.c[2];
+    break;
+  case SHADING:
+    if(strcmp("flat",op[i].op.shading.p->name)==0) shadeType = 0;
+    else if(strcmp("goroud",op[i].op.shading.p->name)==0) shadeType = 1;
+    else if(strcmp("phong",op[i].op.shading.p->name)==0) shadeType = 2;
 	case SET:
 	  set_value( lookup_symbol(op[i].op.set.p->name),
 		     op[i].op.set.p->s.value);
 	  break;
-	  
+
 	case SETKNOBS:
-	  for ( j=0; j < lastsym; j++ ) 
+	  for ( j=0; j < lastsym; j++ )
 	    if ( symtab[j].type == SYM_VALUE )
 	      symtab[j].s.value = op[i].op.setknobs.value;
 	  break;
-	  
+
 	case SPHERE:
 	  /* printf("Sphere: %6.2f %6.2f %6.2f r=%6.2f", */
 	  /* 	 op[i].op.sphere.d[0],op[i].op.sphere.d[1], */
@@ -340,7 +372,7 @@ void my_main() {
 		    op[i].op.torus.r0,op[i].op.torus.r1, step);
 	  matrix_mult( peek(systems), tmp );
 	  draw_polygons(tmp, t, zb, g);
-	  tmp->lastcol = 0;	  
+	  tmp->lastcol = 0;
 	  break;
 	case BOX:
 	  /* printf("Box: d0: %6.2f %6.2f %6.2f d1: %6.2f %6.2f %6.2f", */
@@ -396,7 +428,7 @@ void my_main() {
 	      knob_value = lookup_symbol(op[i].op.move.p->name)->s.value;
 	      xval*= knob_value;
 	      yval*= knob_value;
-	      zval*= knob_value;	      
+	      zval*= knob_value;
 	    }
 	  tmp = make_translate( xval, yval, zval );
 	  matrix_mult(peek(systems), tmp);
@@ -406,7 +438,7 @@ void my_main() {
 	case SCALE:
 	  xval = op[i].op.scale.d[0];
 	  yval = op[i].op.scale.d[1];
-	  zval = op[i].op.scale.d[2];	  
+	  zval = op[i].op.scale.d[2];
 	  /* printf("Scale: %6.2f %6.2f %6.2f", */
 	  /* 	 xval, yval, zval); */
 	  if (op[i].op.scale.p != NULL)
@@ -415,7 +447,7 @@ void my_main() {
 	      knob_value = lookup_symbol(op[i].op.scale.p->name)->s.value;
 	      xval*= knob_value;
 	      yval*= knob_value;
-	      zval*= knob_value;	      
+	      zval*= knob_value;
 	    }
 	  tmp = make_scale( xval, yval, zval );
 	  matrix_mult(peek(systems), tmp);
@@ -440,7 +472,7 @@ void my_main() {
 	    tmp = make_rotY( theta );
 	  else
 	    tmp = make_rotZ( theta );
-	  
+
 	  matrix_mult(peek(systems), tmp);
 	  copy_matrix(tmp, peek(systems));
 	  tmp->lastcol = 0;
@@ -467,7 +499,7 @@ void my_main() {
 
     free_stack( systems );
     free_matrix( tmp );
-    
+
     //save the correct image name for animation
     if (num_frames > 1) {
       printf("Saving Frame: %d\n", f);
